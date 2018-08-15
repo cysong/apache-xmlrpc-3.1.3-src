@@ -18,19 +18,6 @@
  */
 package org.apache.xmlrpc.webserver;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.UnsupportedEncodingException;
-import java.net.Socket;
-import java.net.SocketException;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.StringTokenizer;
-
 import org.apache.xmlrpc.common.ServerStreamConnection;
 import org.apache.xmlrpc.common.XmlRpcHttpRequestConfig;
 import org.apache.xmlrpc.common.XmlRpcNotAuthorizedException;
@@ -39,6 +26,13 @@ import org.apache.xmlrpc.server.XmlRpcStreamServer;
 import org.apache.xmlrpc.util.HttpUtil;
 import org.apache.xmlrpc.util.LimitedInputStream;
 import org.apache.xmlrpc.util.ThreadPool;
+
+import java.io.*;
+import java.net.Socket;
+import java.net.SocketException;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.StringTokenizer;
 
 
 
@@ -69,17 +63,34 @@ public class Connection implements ThreadPool.InterruptableTask, ServerStreamCon
         RequestData getRequestData() { return requestData; }
     }
 
-    private static class BadEncodingException extends RequestException {
+    public static class BadEncodingException extends RequestException {
         private static final long serialVersionUID = -2674424938251521248L;
         BadEncodingException(RequestData pData, String pTransferEncoding) {
             super(pData, pTransferEncoding);
         }
     }
 
-    private static class BadRequestException extends RequestException {
+    public static class BadRequestException extends RequestException {
         private static final long serialVersionUID = 3257848779234554934L;
         BadRequestException(RequestData pData, String pTransferEncoding) {
             super(pData, pTransferEncoding);
+        }
+    }
+
+    /**
+     * indicates we got a get request
+     */
+    public static class GetRequestException extends BadRequestException {
+
+        private final String uri;
+        GetRequestException(RequestData pData, String pTransferEncoding,
+                            String uri) {
+            super(pData, pTransferEncoding);
+            this.uri = uri;
+        }
+
+        public String getUri() {
+            return uri;
         }
     }
 
@@ -162,11 +173,15 @@ public class Connection implements ThreadPool.InterruptableTask, ServerStreamCon
         // tokenize first line of HTTP request
         StringTokenizer tokens = new StringTokenizer(line);
         String method = tokens.nextToken();
-        if (!"POST".equalsIgnoreCase(method)) {
+        String uri = tokens.nextToken();
+        if ("GET".equalsIgnoreCase(method)) {
+            throw new GetRequestException(requestData, method, uri);
+        }
+        else if (!"POST".equalsIgnoreCase(method)) {
             throw new BadRequestException(requestData, method);
         }
         requestData.setMethod(method);
-        tokens.nextToken(); // Skip URI
+
         String httpVersion = tokens.nextToken();
         requestData.setHttpVersion(httpVersion);
         requestData.setKeepAlive(serverConfig.isKeepAliveEnabled()
