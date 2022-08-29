@@ -18,9 +18,8 @@
  */
 package org.apache.xmlrpc.client;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
@@ -177,7 +176,9 @@ public abstract class XmlRpcStreamTransport extends XmlRpcTransportImpl {
 	}
 
 	protected Object readResponse(XmlRpcStreamRequestConfig pConfig, InputStream pStream) throws XmlRpcException {
-		InputSource isource = new InputSource(pStream);
+		BufferedReader bf = new XmlBufferedReader((new BufferedReader(new InputStreamReader(pStream, StandardCharsets.UTF_8)));
+
+		InputSource isource = new InputSource(bf);
 		XMLReader xr = newXMLReader();
 		XmlRpcResponseParser xp;
 		try {
